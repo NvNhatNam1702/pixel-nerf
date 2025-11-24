@@ -105,6 +105,17 @@ class MultiObjectDataset(torch.utils.data.Dataset):
         camera_angle_x = transform.get("camera_angle_x")
         focal = 0.5 * W / np.tan(0.5 * camera_angle_x)
 
+        # Calculate width and height for every individual view
+        # Width = cmax - cmin
+        widths = bboxes[:, 2] - bboxes[:, 0]
+        # Height = rmax - rmin
+        heights = bboxes[:, 3] - bboxes[:, 1]
+
+        avg_width = torch.mean(widths)
+        avg_height = torch.mean(heights)
+
+        print(f"Average Object Size: {avg_width.item():.2f} x {avg_height.item():.2f}")
+
         result = {
             "path": dir_path,
             "img_id": index,
