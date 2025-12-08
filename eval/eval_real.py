@@ -44,8 +44,8 @@ def extra_args(parser):
     parser.add_argument("--focal", type=float, default=131.25, help="Focal length")
 
     parser.add_argument("--radius", type=float, default=1.3, help="Camera distance")
-    parser.add_argument("--z_near", type=float, default=0.8)
-    parser.add_argument("--z_far", type=float, default=1.8)
+    parser.add_argument("--z_near", type=float, default=0.8, help="change z near (?)")
+    parser.add_argument("--z_far", type=float, default=1.8, help= "change z far (?)")
 
     parser.add_argument(
         "--elevation",
