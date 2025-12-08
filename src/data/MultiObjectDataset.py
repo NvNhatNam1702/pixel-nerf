@@ -72,7 +72,7 @@ class MultiObjectDataset(torch.utils.data.Dataset):
         for frame in transform["frames"]:
             fpath = frame["file_path"]
             basename = os.path.splitext(os.path.basename(fpath))[0]
-            obj_path = os.path.join(dir_path, "{}_obj.png".format(basename))
+            obj_path = os.path.join(dir_path, "{}.png".format(basename))
             img = imageio.imread(obj_path)
             mask = self.mask_to_tensor(img[..., 3])
             rows = np.any(img, axis=1)
@@ -89,9 +89,12 @@ class MultiObjectDataset(torch.utils.data.Dataset):
             bbox = torch.tensor([cmin, rmin, cmax, rmax], dtype=torch.float32)
 
             img_tensor = self.image_to_tensor(img[..., :3])
-            img = img_tensor * mask + (
-                1.0 - mask
-            )  # solid white background where transparent
+
+            # solid white background where transparent
+            # img = img_tensor * mask + (1.0 - mask)
+            # solid black if the training code fail
+            img = img_tensor * mask
+
             all_imgs.append(img)
             all_bboxes.append(bbox)
             all_masks.append(mask)
