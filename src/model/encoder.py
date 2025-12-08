@@ -17,7 +17,8 @@ class SpatialEncoder(nn.Module):
 
     def __init__(
         self,
-        backbone="resnet34",
+        #Change to resnet 50 for testing
+        backbone="resnet50",
         pretrained=True,
         num_layers=4,
         index_interp="bilinear",
@@ -65,7 +66,18 @@ class SpatialEncoder(nn.Module):
             # Following 2 lines need to be uncommented for older configs
             self.model.fc = nn.Sequential()
             self.model.avgpool = nn.Sequential()
-            self.latent_size = [0, 64, 128, 256, 512, 1024][num_layers]
+
+            if 'resnet' in backbone:
+                # List of channels for each layer in ResNet for choosing
+                if backbone in ['resnet50', 'resnet101', 'resnet152']:
+                    channels = [64, 256, 512, 1024, 2048]
+                else:
+                    channels = [64, 64, 128, 256, 512]
+                
+                self.latent_size = sum(channels[:num_layers])
+            else:
+                # Fallback for non-resnet backbones
+                self.latent_size = [0, 64, 128, 256, 512, 1024][num_layers]
 
         self.num_layers = num_layers
         self.index_interp = index_interp
@@ -182,7 +194,7 @@ class ImageEncoder(nn.Module):
     Global image encoder
     """
 
-    def __init__(self, backbone="resnet34", pretrained=True, latent_size=128):
+    def __init__(self, backbone="resnet50", pretrained=True, latent_size=128):
         """
         :param backbone Backbone network. Assumes it is resnet*
         e.g. resnet34 | resnet50
@@ -190,13 +202,22 @@ class ImageEncoder(nn.Module):
         :param pretrained Whether to use model pretrained on ImageNet
         """
         super().__init__()
+        self.backbone = backbone
         self.model = getattr(torchvision.models, backbone)(pretrained=pretrained)
         self.model.fc = nn.Sequential()
         self.register_buffer("latent", torch.empty(1, 1), persistent=False)
         # self.latent (B, L)
         self.latent_size = latent_size
-        if latent_size != 512:
-            self.fc = nn.Linear(512, latent_size)
+
+        if backbone in ['resnet50', 'resnet101', 'resnet152']:
+            self.feature_dim = 2048
+        else:
+            self.feature_dim = 512
+
+        if self.latent_size != self.feature_dim:
+            self.fc = nn.Linear(self.feature_dim, latent_size)
+        else:
+            self.fc = nn.Identity()
 
     def index(self, uv, cam_z=None, image_size=(), z_bounds=()):
         """
@@ -226,8 +247,7 @@ class ImageEncoder(nn.Module):
         x = self.model.avgpool(x)
         x = torch.flatten(x, 1)
 
-        if self.latent_size != 512:
-            x = self.fc(x)
+        x = self.fc(x)
 
         self.latent = x  # (B, latent_size)
         return self.latent
