@@ -14,7 +14,7 @@ from util import get_image_to_tensor_balanced, get_mask_to_tensor
 class MultiObjectDataset(torch.utils.data.Dataset):
     """Synthetic dataset of scenes with multiple Shapenet objects"""
 
-    def __init__(self, path, stage="train", z_near=4, z_far=9, n_views=None):
+    def __init__(self, path, stage="train", z_near=1.2, z_far=2.2, n_views=None):
         super().__init__()
         path = os.path.join(path, stage)
         self.base_path = path
@@ -70,6 +70,7 @@ class MultiObjectDataset(torch.utils.data.Dataset):
         all_masks = []
         all_poses = []
         for frame in transform["frames"]:
+            SCALE_FACTOR = 0.1
             fpath = frame["file_path"]
             basename = os.path.splitext(os.path.basename(fpath))[0]
             obj_path = os.path.join(dir_path, "{}.png".format(basename))
@@ -87,6 +88,9 @@ class MultiObjectDataset(torch.utils.data.Dataset):
                 rmin, rmax = rnz[[0, -1]]
                 cmin, cmax = cnz[[0, -1]]
             bbox = torch.tensor([cmin, rmin, cmax, rmax], dtype=torch.float32)
+            # Scaling the Pose
+            pose = np.array(frame["transform_matrix"])
+            pose[:3, 3] *= SCALE_FACTOR
 
             img_tensor = self.image_to_tensor(img[..., :3])
 
@@ -98,7 +102,7 @@ class MultiObjectDataset(torch.utils.data.Dataset):
             all_imgs.append(img)
             all_bboxes.append(bbox)
             all_masks.append(mask)
-            all_poses.append(torch.tensor(frame["transform_matrix"]))
+            all_poses.append(torch.tensor(pose, dtype=torch.float32))
         imgs = torch.stack(all_imgs)
         masks = torch.stack(all_masks)
         bboxes = torch.stack(all_bboxes)
@@ -117,7 +121,7 @@ class MultiObjectDataset(torch.utils.data.Dataset):
         avg_width = torch.mean(widths)
         avg_height = torch.mean(heights)
 
-        print(f"Average Object Size: {avg_width.item():.2f} x {avg_height.item():.2f}")
+        # print(f"Average Object Size: {avg_width.item():.2f} x {avg_height.item():.2f}")
 
         result = {
             "path": dir_path,
